@@ -1,0 +1,245 @@
+<aura:component controller="Einstein">
+    
+    <ltng:require scripts="{!join(',',$Resource.jquery)}"
+                  afterScriptsLoaded="{!c.doInit}" />       
+    
+    <aura:attribute name="einsteinKey" type="String"/>
+    <aura:attribute name="einsteinToken" type="String" default=""/>    
+    <aura:attribute name="datasets" type="Object[]"/>
+    <aura:attribute name="json" type="String"/>       
+    <aura:attribute name="displayChart" type="Boolean" default="false" />     
+    <aura:attribute name="displayPredict" type="Boolean" default="false" />           
+    <aura:attribute name="predictionResults" type="String" default="" />            
+    <aura:attribute name="modelId" type="String" default="" />        
+    <aura:attribute name="queryData" type="Object[]"/> 
+    
+	<ui:spinner aura:id="spinner"/>
+    
+    
+    <lightning:layout horizontalAlign="center ">
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <lightning:textarea name="einsteinKey" value="{!v.einsteinKey}" label="Einstein Key" />
+            Get Einstein Key at <a href="https://api.einstein.ai/signup" target="_blank">https://api.einstein.ai/signup</a>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <lightning:textarea name="einsteinToken" value="{!v.einsteinToken}" label="Einstein OAuth Token" />
+            Get Einstein Token OAuth at <a href="https://api.einstein.ai/token" target="_blank">https://api.einstein.ai/token</a>&nbsp;&nbsp;
+            <lightning:button label="save" onclick="{!c.handleSetToken}" />
+        </lightning:layoutItem> 
+    </lightning:layout>
+
+
+    <lightning:button label="Refresh" onclick="{!c.refresh}" />
+    
+    <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+        <thead>
+            <tr class="slds-text-title_caps">
+                <th scope="col"></th>
+                <th scope="col"><div class="slds-truncate">id</div></th>
+				<th scope="col"><div class="slds-truncate">available</div></th>  
+                <th scope="col"><div class="slds-truncate">statusMsg</div></th>
+				<th scope="col"><div class="slds-truncate">createdAt</div></th>     
+				<th scope="col"><div class="slds-truncate">updatedAt</div></th>     
+                <th scope="col"><div class="slds-truncate">Examples</div></th>
+				<th scope="col"><div class="slds-truncate">Labels</div></th> 
+				<th scope="col"><div class="slds-truncate">Models</div></th>                   
+            </tr>
+        </thead>
+        <tbody>
+            <aura:iteration items="{!v.datasets}" var="d">
+                <tr>
+                    <td class="slds-align-top"><div class="slds-truncate"></div><lightning:buttonIcon iconName="utility:delete" onclick="{!c.deleteDataset}" name="{!d.id}"/></td>
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.id}</td>
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.available}</td> 
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.statusMsg}</td>
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.createdAt}</td>         
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.updatedAt}</td>         
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.totalExamples}</td>
+                    <td class="slds-align-top"><div class="slds-truncate"></div>{!d.totalLabels}</td>
+                    <td><div class="slds-truncate slds-align-top">
+                        <aura:if isTrue="{!d.models.length > 0}">
+                            <aura:iteration items="{!d.models}" var="m">
+                                <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                    <thead>
+                                        <tr class="slds-text-title_caps">
+                                            <th scope="col"><div class="slds-truncate"></div></th>
+                                            <th scope="col"><div class="slds-truncate">modelId</div></th>
+                                            <th scope="col"><div class="slds-truncate">name</div></th>  
+                                            <th scope="col"><div class="slds-truncate">status</div></th>
+                                            <th scope="col"><div class="slds-truncate">createdAt</div></th>     
+                                            <th scope="col"><div class="slds-truncate">updatedAt</div></th>     
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><div class="slds-truncate"></div>
+                                                <lightning:buttonIcon iconName="utility:graph" onclick="{!c.graph}" name="{!m.modelId}"/>
+                                                <lightning:buttonIcon iconName="utility:replace" onclick="{!c.retrain}" name="{!m.modelId}"/>
+                                                <lightning:buttonIcon iconName="utility:magicwand" onclick="{!c.predict}" name="{!m.modelId}"/>
+                                            </td>
+                                            <td><div class="slds-truncate"></div>{!m.modelId}</td>
+                                            <td><div class="slds-truncate"></div>{!m.name}</td> 
+                                            <td><div class="slds-truncate"></div>{!m.status} {!m.failureMsg}</td>
+                                            <td><div class="slds-truncate"></div>{!m.createdAt}</td>         
+                                            <td><div class="slds-truncate"></div>{!m.updatedAt}</td>  
+                                        </tr>
+                                    </tbody>
+                                </table>       
+                                
+                                
+                                <aura:if isTrue="{! !empty(m.trainingStatus)}">
+                                    
+                                    <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                        <thead>
+                                            <tr class="slds-text-title_caps">
+                                                <th scope="col"><div class="slds-truncate">Learning Rate</div></th>
+                                                <th scope="col"><div class="slds-truncate">Epochs</div></th>
+                                                <th scope="col"><div class="slds-truncate">Training Time</div></th> 
+                                                <th scope="col"><div class="slds-truncate">Early Stop</div></th> 
+                                                <th scope="col"><div class="slds-truncate">Last Epoch Done</div></th> 
+                                                <th scope="col"><div class="slds-truncate">Test/Train Split</div></th> 
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><div class="slds-truncate"></div>{!m.trainingStatus.learningRate}</td> 
+                                                <td><div class="slds-truncate"></div>{!m.trainingStatus.epochs}</td>
+                                                <td><div class="slds-truncate"></div>{!m.trainingStatus.trainStats.trainingTime}</td>
+                                                <td><div class="slds-truncate"></div>{!m.trainingStatus.trainStats.earlyStopping}</td>
+                                                <td><div class="slds-truncate"></div>{!m.trainingStatus.trainStats.lastEpochDone}</td>
+                                                <td><div class="slds-truncate"></div>{!m.trainingStatus.trainStats.testSplitSize}/{!m.trainingStatus.trainStats.trainSplitSize }</td>                                                   
+                                            </tr>
+                                        </tbody>
+                                    </table>                                               
+                                    
+                                </aura:if>
+                                
+                                
+                                <aura:if isTrue="{! !empty(m.metricsData)}">
+                                    <lightning:accordion activeSectionName="md">
+                                        <lightning:accordionSection label="Model Details" name="md">
+                                            <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                                <thead>
+                                                    <tr class="slds-text-title_caps">
+                                                        <th scope="col"><div class="slds-truncate">Test Accuracy</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Training Accuracy</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Training Loss</div></th>     
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><div class="slds-truncate"></div>{!m.metricsData.testAccuracy}</td>
+                                                        <td><div class="slds-truncate"></div>{!m.metricsData.trainingAccuracy}</td> 
+                                                        <td><div class="slds-truncate"></div>{!m.metricsData.trainingLoss}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>                                          
+
+                                            
+                                            
+                                        </lightning:accordionSection>
+                                        <lightning:accordionSection label="Label Details" name="ld">
+                                            
+                                            
+                                            <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                                <thead>
+                                                    <tr class="slds-text-title_caps">
+                                                        <th scope="col"><div class="slds-truncate">Label</div></th>
+                                                        <th scope="col"><div class="slds-truncate">F1</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Confusion Matrix</div></th>     
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <aura:iteration items="{!m.metricsData.labelMetrics}" var="lm">
+                                                        <tr>
+                                                            <td><div class="slds-truncate"></div>{!lm.label}</td>
+                                                            <td><div class="slds-truncate"></div>{!lm.f1}</td> 
+                                                            <td><div class="slds-truncate"></div>{!lm.confusionMatrix}</td>
+                                                        </tr>
+                                                    </aura:iteration>
+                                                </tbody>
+                                            </table>      
+                                            
+                                        </lightning:accordionSection>
+                                        
+                                    </lightning:accordion>  
+                                </aura:if>                                            
+                                
+                                
+                            </aura:iteration>
+                            
+                            
+                            
+                        </aura:if>
+                        <lightning:button label="create model" onclick="{!c.createModel}" name="{!d.id}"/>                                         
+                        </div>
+                    </td> 
+                </tr>
+            </aura:iteration>
+        </tbody>
+    </table>    
+    
+    
+    <lightning:layout horizontalAlign="center ">
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <lightning:textarea name="csv" value="{!v.json}" label="Data to Train Model" />
+        </lightning:layoutItem>
+    </lightning:layout>    
+    
+    
+    <lightning:button label="Upload" onclick="{!c.upload}" />
+    
+    <lightning:button label="query" onclick="{!c.doQuery}" />    
+
+    <lightning:button label="Prep Data" onclick="{!c.prepData}" />    
+
+
+    
+    <aura:if isTrue="{!v.displayChart}">
+        <div class="demo-only" style="height: 640px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="{!c.closeModal}">
+                            <lightning:icon iconName="utility:close" size="small" class="slds-button__icon"/>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Learning Curve</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                    	<img id="learningCurve" src="https://chart.googleapis.com/chart?cht=p3&amp;chs=250x100&amp;chd=t:60,40&amp;chl=Hello|World"></img>
+                    </div>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>    
+    </aura:if>    
+    
+
+    
+    <aura:if isTrue="{!v.displayPredict}">
+        <div class="demo-only" style="height: 640px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="{!c.closeModal}">
+                            <lightning:icon iconName="utility:close" size="small" class="slds-button__icon"/>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Do Einstein Intent Prediction</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                        <lightning:input type="text" placeholder="enter text..." label="Input" aura:id="predictText"/>
+                        <br/>
+                        <lightning:textarea name="predictionResults" value="{!v.predictionResults}" label="Results" />
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <button class="slds-button slds-button_brand" onclick="{!c.doPredict}">Predict</button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>    
+    </aura:if>
+    
+</aura:component>

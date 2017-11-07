@@ -1,0 +1,56 @@
+<apex:page sidebar="false" showHeader="false" controller="PredictCon" lightningStylesheets="true" id="predictionPage">
+    
+    <div style="padding: 20px">
+        
+        <apex:form id="predictionForm">
+
+            
+            <apex:pageBlock >
+                
+                <apex:outputLabel value="Choose Prediction Model " for="modelId"/>
+                <apex:selectList id="modelId" value="{!selectedModel}" size="1">
+                    <apex:selectOptions value="{!modelList}"></apex:selectOptions>
+                </apex:selectList>                        
+                
+                <apex:pageBlockButtons location="top">
+                    <apex:commandButton value="Get Predictions" action="{!getPredictions}" rerender="predictionPage:predictionForm"/>
+                    <apex:commandButton value="Revise Prediction Model" action="{!revise}"/>                    
+                    <apex:commandButton value="Add Items to Quote" action="{!addToQuote}"/>
+                </apex:pageBlockButtons>
+                
+                
+                
+                <apex:outputPanel rendered="{!predictionList.size>0}">
+                    <apex:pageBlockTable value="{!predictionList}" var="p" id="table">
+                        <apex:column >
+                            <apex:inputCheckbox value="{!p.Selected}"/>
+                        </apex:column>
+                        <apex:column > 
+                            <apex:facet name="header">Product</apex:facet>
+                            {!p.Label}
+                        </apex:column>
+                        <apex:column > 
+                            <apex:facet name="header">Percentage Match</apex:facet>
+                            {!p.Percentage}                     
+                        </apex:column>                    
+                    </apex:pageBlockTable>
+                    
+                    <apex:outputLabel value="This is actually a better add-on " for="labelId"/>        
+                    <apex:selectList id="labelId" value="{!selectedLabel}" size="1">
+                        <apex:selectOptions value="{!labels}"></apex:selectOptions>
+                    </apex:selectList>                        
+                </apex:outputPanel>
+                
+            </apex:pageBlock>
+            
+            
+            
+            
+
+        </apex:form>
+        
+        
+    </div>
+    
+    
+</apex:page>
